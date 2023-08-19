@@ -1,0 +1,22 @@
+version: "3"
+
+services:
+  smart-db-mssql:
+    container_name: smart-db-msql
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - "ACCEPT_EULA=Y"
+      - "MSSQL_SA_PASSWORD=Password123!@"
+    ports:
+      - "1433:1433"
+    
+    restart: unless-stopped
+  
+  smart-db-postgres:
+    container_name: smart-db-postgres
+    image: postgres
+    environment:
+      - "POSTGRES_PASSWORD=Password123!@"
+    ports:
+      - "5432:5432"
+    restart: unless-stopped

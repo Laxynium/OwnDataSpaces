@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions">
+            <HintPath>..\..\..\..\..\Program Files\dotnet\shared\Microsoft.AspNetCore.App\7.0.9\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
+        </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Dapper" Version="2.0.143" PrivateAssets="compile" />
+        <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.2.2" PrivateAssets="compile" />
+        <PackageReference Include="Microsoft.Data.SqlClient" Version="5.1.1" PrivateAssets="compile" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="7.0.9" PrivateAssets="compile" />
+        <PackageReference Include="Npgsql" Version="7.0.4" />
+    </ItemGroup>
+
+</Project>

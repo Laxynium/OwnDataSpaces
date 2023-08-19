@@ -1,0 +1,15 @@
+﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=2e01fcbc_002D5be1_002D46aa_002Db969_002Def517b0270ac/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="RunningInParallelTests" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+  &lt;Or&gt;&#xD;
+    &lt;TestAncestor&gt;&#xD;
+      &lt;TestId&gt;xUnit::89D2DB45-B478-4568-A9E2-7CCFFB015E1D::net7.0::SmartIntegrationTests.Postgres.Tests.RunningMultipleTestsInParallel&lt;/TestId&gt;&#xD;
+      &lt;TestId&gt;xUnit::0E1A985B-5996-4A3A-80C6-DD5D21A0111B::net7.0::SmartIntegrationTests.SqlServer.Tests.RunningMultipleTestsInParallel&lt;/TestId&gt;&#xD;
+    &lt;/TestAncestor&gt;&#xD;
+    &lt;Project Location="C:\Users\Grzegorz\RiderProjects\Experiments\Experiments\SmartIntegrationTests\OwnDataSpaces.SqlServer.Tests" Presentation="&amp;lt;SqlServer&amp;gt;\&amp;lt;OwnDataSpaces.SqlServer.Tests&amp;gt;" /&gt;&#xD;
+    &lt;Project Location="C:\Users\Grzegorz\RiderProjects\Experiments\Experiments\SmartIntegrationTests\OwnDataSpaces.Postgres.Tests" Presentation="&amp;lt;Postgres&amp;gt;\&amp;lt;OwnDataSpaces.Postgres.Tests&amp;gt;" /&gt;&#xD;
+  &lt;/Or&gt;&#xD;
+&lt;/SessionState&gt;</s:String>
+	<s:Boolean x:Key="/Default/Housekeeping/UnitTestingMru/UnitTestRunner/EnvironmentVariablesIndexed/=RESHARPER_005FHOST_005FVERSION/@EntryIndexRemoved">True</s:Boolean>
+	<s:Boolean x:Key="/Default/Housekeeping/UnitTestingMru/UnitTestRunner/EnvironmentVariablesIndexed/=RESHARPER_005FHOST/@EntryIndexRemoved">True</s:Boolean>
+	<s:String x:Key="/Default/Housekeeping/UnitTestingMru/UnitTestRunner/EnvironmentVariablesIndexed/=TESTCONTAINERS_005FUSE_005FEXISTING_005FMSSQL/@EntryIndexedValue">true</s:String>
+	<s:String x:Key="/Default/Housekeeping/UnitTestingMru/UnitTestRunner/EnvironmentVariablesIndexed/=TESTCONTAINERS_005FUSE_005FEXISTING_005FPOSTGRES/@EntryIndexedValue">false</s:String></wpf:ResourceDictionary>
