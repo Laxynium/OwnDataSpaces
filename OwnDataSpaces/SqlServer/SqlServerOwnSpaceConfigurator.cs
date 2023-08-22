@@ -50,10 +50,10 @@ public static partial class SqlServerOwnSpaceConfigurator
             
             var indexForeignKeys = await executor.GetForeignKeys(table);
             var toAdd = indexForeignKeys
-                .Where(x => x.ReferenceColumns.Any(c => constraints.Contains(c)))
+                .Where(x => x.ReferencingColumns.Any(c => constraints.Contains(c)))
                 .ToList();
             var toAdd2 = indexForeignKeys
-                .Where(x => x.ReferenceColumns.Any(c => uixs.Contains(c)))
+                .Where(x => x.ReferencingColumns.Any(c => uixs.Contains(c)))
                 .Select(x=> x with {IsConstraint = false})
                 .ToList();
             foreignKeys.AddRange(toAdd);
@@ -89,8 +89,7 @@ public static partial class SqlServerOwnSpaceConfigurator
 
         await executor.AddOwnSpacePolicy(policyName, policyFunction, tables, ownSpaceColumnName);
     }
+    internal record UniqueIndex(string Name, bool HasConstraint, string? ConstraintName, Column[] Columns);
 
-    private record UniqueIndex(string Name, bool HasConstraint, string? ConstraintName, Column[] Columns);
-
-    private record Column(string Name, bool IsDescending, bool IsIncluded);
+    internal record Column(string Name, bool IsDescending, bool IsIncluded);
 }

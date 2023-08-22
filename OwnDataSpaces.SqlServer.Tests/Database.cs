@@ -1,4 +1,5 @@
-﻿using Dapper;
+﻿using System.Data.Common;
+using Dapper;
 using FluentAssertions;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;

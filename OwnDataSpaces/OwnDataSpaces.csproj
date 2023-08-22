@@ -12,6 +12,9 @@
             <HintPath>..\..\..\..\..\Program Files\dotnet\shared\Microsoft.AspNetCore.App\7.0.9\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
         </Reference>
     </ItemGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="$(AssemblyName).SqlServer.Tests"/>
+    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Dapper" Version="2.0.143" PrivateAssets="compile" />

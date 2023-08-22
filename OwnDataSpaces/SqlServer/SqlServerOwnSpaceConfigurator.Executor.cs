@@ -8,7 +8,7 @@ namespace OwnDataSpaces.SqlServer;
 
 public static partial class SqlServerOwnSpaceConfigurator
 {
-    private class Executor
+    internal class Executor
     {
         private readonly DbConnection _connection;
 
@@ -34,6 +34,136 @@ public static partial class SqlServerOwnSpaceConfigurator
                                """;
             var tables = await QueryAsync<Table>(sql);
             return tables.Where(x => filter(x)).ToList();
+        }
+
+        public async Task<IReadOnlyCollection<ForeignKey>> GetForeignKeysToModify(TableFilter filter)
+        {
+            const string sql = """
+                               SELECT
+                                    obj.name AS [Name],
+                                    SCHEMA_NAME(tab1.schema_id) AS [TableSchema],
+                                    tab1.name AS [TableName],
+                                    col1.name AS [TableColumn],
+                                    SCHEMA_NAME(tab2.schema_id) AS [ReferencedTableSchema],
+                                    tab2.name AS [ReferencedTableName],
+                                    col2.name AS [ReferencedTableColumn]
+                                FROM sys.foreign_key_columns fkc
+                                INNER JOIN sys.objects obj
+                                    ON obj.object_id = fkc.constraint_object_id
+                                INNER JOIN sys.tables tab1
+                                    ON tab1.object_id = fkc.parent_object_id
+                                INNER JOIN sys.schemas sch
+                                    ON tab1.schema_id = sch.schema_id
+                                INNER JOIN sys.columns col1
+                                    ON col1.column_id = parent_column_id AND col1.object_id = tab1.object_id
+                                INNER JOIN sys.tables tab2
+                                    ON tab2.object_id = fkc.referenced_object_id
+                                INNER JOIN sys.columns col2
+                                    ON col2.column_id = referenced_column_id AND col2.object_id = tab2.object_id
+                               """;
+            var foreignKeys = await QueryAsync(sql, () => new
+            {
+                Name = default(string)!,
+                TableSchema = default(string)!,
+                TableName = default(string)!,
+                TableColumn = default(string)!,
+                ReferencedTableSchema = default(string)!,
+                ReferencedTableName = default(string)!,
+                ReferencedTableColumn = default(string)!,
+            });
+
+            var result = foreignKeys.GroupBy(fk => new { fk.ReferencedTableSchema, fk.ReferencedTableName })
+                .SelectMany(refTabs =>
+                    refTabs.GroupBy(refTab => new { refTab.TableSchema, refTab.TableName })
+                        .SelectMany(tabs => tabs.GroupBy(y => y.Name)
+                            .Select(keys => new ForeignKey(
+                                new Table(refTabs.Key.ReferencedTableName, refTabs.Key.ReferencedTableSchema),
+                                new Table(tabs.Key.TableName, tabs.Key.TableSchema),
+                                keys.Key,
+                                keys.Select(z => z.TableColumn).ToArray(),
+                                keys.Select(z => z.ReferencedTableColumn).ToArray())))
+                        .ToList())
+                .ToList();
+
+            return result.Where(x => filter(x.Table))
+                .ToList();
+        }
+
+        public async Task<IReadOnlyCollection<UniqueConstraint>> GetUniqueConstraintsToModify(TableFilter filter)
+        {
+            const string sql = """
+                                SELECT kc.name AS [Name],
+                                    OBJECT_SCHEMA_NAME(i.object_id) AS TableSchema,
+                                    OBJECT_NAME(i.object_id) AS TableName,
+                                    COL_NAME(ic.object_id, ic.column_id) AS [Column]
+                                FROM sys.key_constraints kc
+                                INNER JOIN sys.indexes i ON kc.unique_index_id = i.index_id AND kc.parent_object_id = i.object_id
+                                INNER JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+                                WHERE i.is_primary_key = 0
+                               """;
+            var sqlResult = await QueryAsync(sql, () => new
+            {
+                Name = default(string)!,
+                TableSchema = default(string)!,
+                TableName = default(string)!,
+                Column = default(string)!,
+            });
+
+            var result = sqlResult.GroupBy(x => new { x.TableSchema, x.TableName })
+                .SelectMany(tables => tables.GroupBy(x => x.Name)
+                    .Select(constrains =>
+                        new UniqueConstraint(
+                            new Table(tables.Key.TableName, tables.Key.TableSchema),
+                            constrains.Key,
+                            constrains.Select(x => x.Column).ToArray())))
+                .ToList();
+
+            return result.Where(x => filter(x.Table))
+                .ToList();
+        }
+
+        public async Task<IReadOnlyCollection<UniqueIndex2>> GetUniqueIndexesToModify(TableFilter filter)
+        {
+            const string sql = """
+                                SELECT i.name AS [Name],
+                                    OBJECT_SCHEMA_NAME(i.object_id) AS TableSchema,
+                                    OBJECT_NAME(i.object_id) AS TableName,
+                                    COL_NAME(ic.object_id, ic.column_id) AS [Column],
+                                    ic.is_descending_key AS IsDecending,
+                                    ic.is_included_column AS IsIncluded
+                                FROM sys.indexes i
+                                INNER JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+                                LEFT JOIN sys.key_constraints kc ON i.index_id = kc.unique_index_id AND i.object_id = kc.parent_object_id 
+                                WHERE i.is_primary_key = 0
+                                    AND i.is_hypothetical = 0
+                                    AND i.is_unique = 1
+                                    AND OBJECT_SCHEMA_NAME(i.object_id) <> 'sys'
+                                    AND kc.object_id IS NULL
+                               """;
+            var sqlResult = await QueryAsync(sql, () => new
+            {
+                Name = default(string)!,
+                TableSchema = default(string)!,
+                TableName = default(string)!,
+                Column = default(string)!,
+                IsDecending = default(bool),
+                IsIncluded = default(bool)
+            });
+
+            var result = sqlResult.GroupBy(x => new { x.TableSchema, x.TableName })
+                .SelectMany(tables => tables.GroupBy(x => x.Name)
+                    .Select(constrains =>
+                        new UniqueIndex2(
+                            new Table(tables.Key.TableName, tables.Key.TableSchema),
+                            constrains.Key,
+                            constrains
+                                .Select(x => new Column(x.Column, x.IsDecending, x.IsIncluded))
+                                .ToArray())))
+                .ToList();
+
+            return result
+                .Where(x => filter(x.Table))
+                .ToList();
         }
 
         public async Task AddOwnSpaceColumn(Table table, string columnName)
@@ -63,7 +193,7 @@ public static partial class SqlServerOwnSpaceConfigurator
             await ExecuteAsync(sql);
         }
 
-        public async Task<IReadOnlyCollection<UniqueIndex>> GetUniqueIndexes(Table table)
+        internal async Task<IReadOnlyCollection<UniqueIndex>> GetUniqueIndexes(Table table)
         {
             var sql = $"""            
                            SELECT
@@ -106,7 +236,7 @@ public static partial class SqlServerOwnSpaceConfigurator
                 .ToList();
         }
 
-        public async Task AddSpaceIdToIndex(Table table, UniqueIndex index, string columnName)
+        internal async Task AddSpaceIdToIndex(Table table, UniqueIndex index, string columnName)
         {
             if (index.Columns.Any(c => c.Name == columnName))
             {
@@ -229,7 +359,7 @@ public static partial class SqlServerOwnSpaceConfigurator
                            ALTER TABLE [{foreignKey.Table.Schema}].[{foreignKey.Table.Name}]
                            ADD CONSTRAINT [{foreignKey.Name}]
                                FOREIGN KEY ({foreignKey.Columns.Format(",", c => $"[{c}]")})
-                               REFERENCES [{foreignKey.ReferenceTable.Schema}].[{foreignKey.ReferenceTable.Name}]({foreignKey.ReferenceColumns.Format(",", c => $"[{c}]")})
+                               REFERENCES [{foreignKey.ReferencingTable.Schema}].[{foreignKey.ReferencingTable.Name}]({foreignKey.ReferencingColumns.Format(",", c => $"[{c}]")})
                            """;
                 await ExecuteAsync(sql);
             }
@@ -239,7 +369,7 @@ public static partial class SqlServerOwnSpaceConfigurator
                            ALTER TABLE [{foreignKey.Table.Schema}].[{foreignKey.Table.Name}]
                            ADD CONSTRAINT [{foreignKey.Name}]
                                FOREIGN KEY ({foreignKey.Columns.Append("OwnSpaceId").Format(",", c => $"[{c}]")})
-                               REFERENCES [{foreignKey.ReferenceTable.Schema}].[{foreignKey.ReferenceTable.Name}]({foreignKey.ReferenceColumns.Append("OwnSpaceId").Format(",", c => $"[{c}]")})
+                               REFERENCES [{foreignKey.ReferencingTable.Schema}].[{foreignKey.ReferencingTable.Name}]({foreignKey.ReferencingColumns.Append("OwnSpaceId").Format(",", c => $"[{c}]")})
                            """;
                 await ExecuteAsync(sql);
             }
@@ -254,6 +384,10 @@ public static partial class SqlServerOwnSpaceConfigurator
         public ValueTask DisposeAsync() => _connection.DisposeAsync();
     }
 
-    public record ForeignKey(Table Table, Table ReferenceTable, string Name, string[] Columns,
-        string[] ReferenceColumns, bool IsConstraint = true);
+    internal record ForeignKey(Table Table, Table ReferencingTable, string Name, string[] Columns,
+        string[] ReferencingColumns, bool IsConstraint = true);
+
+    internal record UniqueConstraint(Table Table, string Name, string[] Columns);
+
+    internal record UniqueIndex2(Table Table, string Name, Column[] Columns);
 }

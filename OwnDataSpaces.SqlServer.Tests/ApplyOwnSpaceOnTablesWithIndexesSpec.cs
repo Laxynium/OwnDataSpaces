@@ -1,7 +1,9 @@
-﻿using Xunit.Abstractions;
+﻿using OwnDataSpaces.SqlServer.Tests.Fixtures;
+using Xunit.Abstractions;
 
 namespace OwnDataSpaces.SqlServer.Tests;
 
+[Collection(nameof(IntegrationTestFixtureCollection))]
 public class ApplyOwnSpaceOnTablesWithIndexesSpec
 {
     private readonly ITestOutputHelper _testOutputHelper;
