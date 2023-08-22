@@ -10,31 +10,21 @@ namespace OwnDataSpaces.SqlServer.Tests.Fixtures;
 public class SqlServerFixture : IAsyncLifetime
 {
     private readonly IMessageSink _sink;
-    private TryToUseExistingContainer<MsSqlContainer>? _msSqlContainer;
+    private SqlServerContainer _msSqlContainer;
 
     public SqlServerFixture(IMessageSink sink)
     {
         _sink = sink;
     }
 
-    public string ConnectionString { get; set; } = null!;
+    public string ConnectionString => _msSqlContainer.ConnectionString;
 
     public async Task InitializeAsync()
     {
         await _sink.Measure("Start container", async () =>
         {
-            _msSqlContainer = new TryToUseExistingContainer<MsSqlContainer>(
-                "TESTCONTAINERS_USE_EXISTING_MSSQL",
-                "Server=127.0.0.1;Database=Smart.Tests;User Id=sa;Password=Password123!@;TrustServerCertificate=True;",
-                () => new MsSqlBuilder()
-                    .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
-                    .WithPassword("Password123!@")
-                    .Build(),
-                c => c.GetConnectionString());
-
+            _msSqlContainer = new SqlServerContainer("Smart.Tests");
             await _msSqlContainer.InitializeAsync();
-
-            ConnectionString = GetConnectionString(_msSqlContainer.GetConnectionString());
         });
 
         await _sink.Measure("Apply migrations", () => SetupDb(ConnectionString));
@@ -46,18 +36,9 @@ public class SqlServerFixture : IAsyncLifetime
         });
     }
 
-    private static string GetConnectionString(string cs)
-    {
-        var options = cs.Split(";").Where(x => !x.StartsWith("Database="));
-        return string.Join(";", options.Append("Database=Smart.Tests"));
-    }
-
     public async Task DisposeAsync()
     {
-        if (_msSqlContainer is not null)
-        {
-            await _msSqlContainer.DisposeAsync();
-        }
+        await _msSqlContainer.DisposeAsync();
     }
 
     private async Task SetupDb(string connectionString)
