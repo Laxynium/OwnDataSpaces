@@ -43,11 +43,21 @@ public static partial class SqlServerOwnSpaceConfigurator
                 .SelectMany(x=>x.Columns)
                 .Select(x=>x.Name)
                 .ToHashSet();
+            var uixs = indexes.Where(x => !x.HasConstraint)
+                .SelectMany(x=>x.Columns)
+                .Select(x=>x.Name)
+                .ToHashSet();
+            
             var indexForeignKeys = await executor.GetForeignKeys(table);
             var toAdd = indexForeignKeys
                 .Where(x => x.ReferenceColumns.Any(c => constraints.Contains(c)))
                 .ToList();
+            var toAdd2 = indexForeignKeys
+                .Where(x => x.ReferenceColumns.Any(c => uixs.Contains(c)))
+                .Select(x=> x with {IsConstraint = false})
+                .ToList();
             foreignKeys.AddRange(toAdd);
+            foreignKeys.AddRange(toAdd2);
         }
 
         if (foreignKeys.Any(x => !tables.Contains(x.Table)))

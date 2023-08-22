@@ -32,15 +32,19 @@ internal class DatabaseOwnSpaceSetter
         cmd.CommandText = sql;
 
         await cmd.ExecuteNonQueryAsync(ct);
-        // await connection.ExecuteAsync(new CommandDefinition(sql, cancellationToken: ct));
     }
 
     public void SetOwnSpace(DbConnection connection)
     {
         var spaceId = _provider.GetSpaceId();
 
+        _logger.LogInformation("Setting OwnSpace to '{SpaceId}'", spaceId);
+        
         var sql = _sqlProvider(spaceId);
 
-        connection.Execute(new CommandDefinition(sql));
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = sql;
+
+        cmd.ExecuteNonQuery();
     }
 }

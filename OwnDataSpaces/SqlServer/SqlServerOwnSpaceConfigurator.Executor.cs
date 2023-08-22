@@ -29,7 +29,7 @@ public static partial class SqlServerOwnSpaceConfigurator
             const string sql = """
                                 SELECT [name] AS [Name], SCHEMA_NAME(schema_id) AS [Schema]
                                 FROM sys.tables t
-                                WHERE 
+                                WHERE
                                 t.temporal_type <> 1;
                                """;
             var tables = await QueryAsync<Table>(sql);
@@ -223,13 +223,26 @@ public static partial class SqlServerOwnSpaceConfigurator
 
         public async Task AddForeignKey(ForeignKey foreignKey)
         {
-            var sql = $"""
-                       ALTER TABLE [{foreignKey.Table.Schema}].[{foreignKey.Table.Name}]
-                       ADD CONSTRAINT [{foreignKey.Name}]
-                           FOREIGN KEY ({foreignKey.Columns.Format(",", c => $"[{c}]")})
-                           REFERENCES [{foreignKey.ReferenceTable.Schema}].[{foreignKey.ReferenceTable.Name}]({foreignKey.ReferenceColumns.Format(",", c => $"[{c}]")})
-                       """;
-            await ExecuteAsync(sql);
+            if (foreignKey.IsConstraint)
+            {
+                var sql = $"""
+                           ALTER TABLE [{foreignKey.Table.Schema}].[{foreignKey.Table.Name}]
+                           ADD CONSTRAINT [{foreignKey.Name}]
+                               FOREIGN KEY ({foreignKey.Columns.Format(",", c => $"[{c}]")})
+                               REFERENCES [{foreignKey.ReferenceTable.Schema}].[{foreignKey.ReferenceTable.Name}]({foreignKey.ReferenceColumns.Format(",", c => $"[{c}]")})
+                           """;
+                await ExecuteAsync(sql);
+            }
+            else
+            {
+                var sql = $"""
+                           ALTER TABLE [{foreignKey.Table.Schema}].[{foreignKey.Table.Name}]
+                           ADD CONSTRAINT [{foreignKey.Name}]
+                               FOREIGN KEY ({foreignKey.Columns.Append("OwnSpaceId").Format(",", c => $"[{c}]")})
+                               REFERENCES [{foreignKey.ReferenceTable.Schema}].[{foreignKey.ReferenceTable.Name}]({foreignKey.ReferenceColumns.Append("OwnSpaceId").Format(",", c => $"[{c}]")})
+                           """;
+                await ExecuteAsync(sql);
+            }
         }
 
         private Task ExecuteAsync(string sql) => _connection.ExecuteAsync(sql);
@@ -242,5 +255,5 @@ public static partial class SqlServerOwnSpaceConfigurator
     }
 
     public record ForeignKey(Table Table, Table ReferenceTable, string Name, string[] Columns,
-        string[] ReferenceColumns);
+        string[] ReferenceColumns, bool IsConstraint = true);
 }
