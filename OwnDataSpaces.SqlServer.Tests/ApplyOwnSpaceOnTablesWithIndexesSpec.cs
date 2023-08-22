@@ -3,6 +3,7 @@ using Xunit.Abstractions;
 
 namespace OwnDataSpaces.SqlServer.Tests;
 
+[Collection(nameof(DatabaseTestsCollection))]
 public class ApplyOwnSpaceOnTablesWithIndexesSpec
 {
     private readonly ITestOutputHelper _testOutputHelper;

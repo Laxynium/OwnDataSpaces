@@ -4,6 +4,7 @@ using OwnDataSpaces.SqlServer.Tests.Fixtures;
 
 namespace OwnDataSpaces.SqlServer.Tests;
 
+[Collection(nameof(DatabaseTestsCollection))]
 public class FindUniqueIndexesToModifySpec
 {
     [Fact]
