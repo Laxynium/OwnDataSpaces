@@ -80,8 +80,8 @@ public static partial class SqlServerOwnSpaceConfigurator
                                 new Table(refTabs.Key.ReferencedTableName, refTabs.Key.ReferencedTableSchema),
                                 new Table(tabs.Key.TableName, tabs.Key.TableSchema),
                                 keys.Key,
-                                keys.Select(z => z.TableColumn).ToArray(),
-                                keys.Select(z => z.ReferencedTableColumn).ToArray())))
+                                keys.Select(z => z.ReferencedTableColumn).ToArray(),
+                                keys.Select(z => z.TableColumn).ToArray())))
                         .ToList())
                 .ToList();
 
@@ -133,7 +133,7 @@ public static partial class SqlServerOwnSpaceConfigurator
                                     ic.is_included_column AS IsIncluded
                                 FROM sys.indexes i
                                 INNER JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
-                                LEFT JOIN sys.key_constraints kc ON i.index_id = kc.unique_index_id AND i.object_id = kc.parent_object_id 
+                                LEFT JOIN sys.key_constraints kc ON i.index_id = kc.unique_index_id AND i.object_id = kc.parent_object_id
                                 WHERE i.is_primary_key = 0
                                     AND i.is_hypothetical = 0
                                     AND i.is_unique = 1
@@ -164,6 +164,33 @@ public static partial class SqlServerOwnSpaceConfigurator
             return result
                 .Where(x => filter(x.Table))
                 .ToList();
+        }
+
+        public async Task ReplaceUniqueConstraint(UniqueConstraint uniqueConstraint, string ownSpaceColumnName)
+        {
+            var table = uniqueConstraint.Table;
+            var sql = $"""
+                         ALTER TABLE [{table.Schema}].[{table.Name}]
+                         DROP CONSTRAINT [{uniqueConstraint.Name}];
+                         ALTER TABLE [{table.Schema}].[{table.Name}]
+                         ADD CONSTRAINT [{uniqueConstraint.Name}] UNIQUE
+                             ({string.Join(", ", uniqueConstraint.Columns.Append(ownSpaceColumnName))})
+                       """;
+            await ExecuteAsync(sql);
+        }
+
+        public async Task ReplaceUniqueIndex(UniqueIndex2 uniqueIndex, string ownSpaceColumnName)
+        {
+            var columns = uniqueIndex.Columns.Append(new Column(ownSpaceColumnName, false, false));
+            var sql = $"""
+                         DROP INDEX [{uniqueIndex.Name}] ON [{uniqueIndex.Table.Schema}].[{uniqueIndex.Table.Name}];
+                         CREATE UNIQUE INDEX [{uniqueIndex.Name}]
+                             ON [{uniqueIndex.Table.Schema}].[{uniqueIndex.Table.Name}]({columns.Format(",", c =>
+                                 $"""
+                                  [{c.Name}] {(c.IsDescending ? "DESC" : "ASC")}
+                                  """)})
+                       """;
+            await ExecuteAsync(sql);
         }
 
         public async Task AddOwnSpaceColumn(Table table, string columnName)
@@ -345,8 +372,19 @@ public static partial class SqlServerOwnSpaceConfigurator
         public async Task DropForeignKey(ForeignKey foreignKey)
         {
             var sql = $"""
-                       ALTER TABLE [{foreignKey.Table.Schema}].[{foreignKey.Table.Name}]
+                       ALTER TABLE [{foreignKey.ReferencingTable.Schema}].[{foreignKey.ReferencingTable.Name}]
                        DROP CONSTRAINT [{foreignKey.Name}];
+                       """;
+            await ExecuteAsync(sql);
+        }
+
+        public async Task RecreateForeignKey(ForeignKey fk, string columnName)
+        {
+            var sql = $"""
+                       ALTER TABLE [{fk.ReferencingTable.Schema}].[{fk.ReferencingTable.Name}]
+                       ADD CONSTRAINT [{fk.Name}]
+                           FOREIGN KEY ({fk.ReferencingColumns.Append(columnName).Format(",", c => $"[{c}]")})
+                           REFERENCES [{fk.Table.Schema}].[{fk.Table.Name}]({fk.Columns.Append(columnName).Format(",", c => $"[{c}]")})
                        """;
             await ExecuteAsync(sql);
         }

@@ -4,7 +4,6 @@ using OwnDataSpaces.SqlServer.Tests.Fixtures;
 
 namespace OwnDataSpaces.SqlServer.Tests;
 
-[Collection(nameof(IntegrationTestFixtureCollection))]
 public class FindingTablesToModifySpec
 {
     [Fact]

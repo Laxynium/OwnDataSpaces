@@ -4,7 +4,6 @@ using OwnDataSpaces.SqlServer.Tests.Fixtures;
 
 namespace OwnDataSpaces.SqlServer.Tests;
 
-[Collection(nameof(IntegrationTestFixtureCollection))]
 public class FindForeignKeysToModifySpec
 {
     [Fact]
@@ -44,16 +43,16 @@ public class FindForeignKeysToModifySpec
                 x =>
                 {
                     x.Table.Should().Be(new Table("TableA", "dbo"));
+                    x.Columns.Should().BeEquivalentTo(new[] { "Id" });
                     x.ReferencingTable.Should().Be(new Table("TableB", "dbo"));
-                    x.ReferencingColumns.Should().BeEquivalentTo(new[] { "Id" });
-                    x.Columns.Should().BeEquivalentTo(new[] { "TableAId" });
+                    x.ReferencingColumns.Should().BeEquivalentTo(new[] { "TableAId" });
                 },
                 x =>
                 {
                     x.Table.Should().Be(new Table("TableA", "SchemaA"));
+                    x.Columns.Should().BeEquivalentTo(new[] { "Id" });
                     x.ReferencingTable.Should().Be(new Table("TableB", "SchemaA"));
-                    x.ReferencingColumns.Should().BeEquivalentTo(new[] { "Id" });
-                    x.Columns.Should().BeEquivalentTo(new[] { "TableAId" });
+                    x.ReferencingColumns.Should().BeEquivalentTo(new[] { "TableAId" });
                 });
     }
 
@@ -84,9 +83,9 @@ public class FindForeignKeysToModifySpec
                 x =>
                 {
                     x.Table.Should().Be(new Table("TableA", "dbo"));
+                    x.Columns.Should().BeEquivalentTo(new[] { "Id" });
                     x.ReferencingTable.Should().Be(new Table("TableB", "SchemaA"));
-                    x.ReferencingColumns.Should().BeEquivalentTo(new[] { "Id" });
-                    x.Columns.Should().BeEquivalentTo(new[] { "TableAId" });
+                    x.ReferencingColumns.Should().BeEquivalentTo(new[] { "TableAId" });
                 });
     }
 
@@ -125,9 +124,9 @@ public class FindForeignKeysToModifySpec
                 x =>
                 {
                     x.Table.Should().Be(new Table("TableA", "SchemaA"));
+                    x.Columns.Should().BeEquivalentTo(new[] { "Id" });
                     x.ReferencingTable.Should().Be(new Table("TableB", "SchemaA"));
-                    x.ReferencingColumns.Should().BeEquivalentTo(new[] { "Id" });
-                    x.Columns.Should().BeEquivalentTo(new[] { "TableAId" });
+                    x.ReferencingColumns.Should().BeEquivalentTo(new[] { "TableAId" });
                 });
     }
 
@@ -165,8 +164,8 @@ public class FindForeignKeysToModifySpec
                 {
                     x.Table.Should().Be(new Table("TableA", "SchemaA"));
                     x.ReferencingTable.Should().Be(new Table("TableB", "SchemaB"));
-                    x.ReferencingColumns.Should().BeEquivalentTo(new[] { "Id" });
-                    x.Columns.Should().BeEquivalentTo(new[] { "TableAId" });
+                    x.ReferencingColumns.Should().BeEquivalentTo(new[] { "TableAId" });
+                    x.Columns.Should().BeEquivalentTo(new[] { "Id" });
                 });
     }
 

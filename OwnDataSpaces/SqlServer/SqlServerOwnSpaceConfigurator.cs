@@ -29,66 +29,80 @@ public static partial class SqlServerOwnSpaceConfigurator
             await executor.AddOwnSpaceIdAsDefaultColumnValue(table, ownSpaceVariableName, ownSpaceColumnName);
         }
 
-        var uniqueIndexes = new List<(Table table, List<UniqueIndex>)>();
-        foreach (var table in tables)
+        var foreignKeysToModify = await executor.GetForeignKeysToModify(tableFilter);
+        var uniqueConstraints = await executor.GetUniqueConstraintsToModify(tableFilter);
+        var uniqueIndexesToModify = await executor.GetUniqueIndexesToModify(tableFilter);
+
+        var invalidForeignKeys = foreignKeysToModify
+            .Where(x => tables.All(t => t != x.ReferencingTable))
+            .ToList();
+        if (invalidForeignKeys.Any())
         {
-            var indexes = await executor.GetUniqueIndexes(table);
-            uniqueIndexes.Add((table, indexes.ToList()));
+            var invalidForeignKey = invalidForeignKeys[0];
+            throw new InvalidOperationException(
+                $"There is foreign key {invalidForeignKey.Name} from table {invalidForeignKey.ReferencingTable} " +
+                $"to table {invalidForeignKey.Table} where referencing table is outside of provided filter");
         }
 
-        var foreignKeys = new List<ForeignKey>();
-        foreach (var (table, indexes) in uniqueIndexes)
-        {
-            var constraints = indexes.Where(x => x.HasConstraint)
-                .SelectMany(x=>x.Columns)
-                .Select(x=>x.Name)
-                .ToHashSet();
-            var uixs = indexes.Where(x => !x.HasConstraint)
-                .SelectMany(x=>x.Columns)
-                .Select(x=>x.Name)
-                .ToHashSet();
-            
-            var indexForeignKeys = await executor.GetForeignKeys(table);
-            var toAdd = indexForeignKeys
-                .Where(x => x.ReferencingColumns.Any(c => constraints.Contains(c)))
-                .ToList();
-            var toAdd2 = indexForeignKeys
-                .Where(x => x.ReferencingColumns.Any(c => uixs.Contains(c)))
-                .Select(x=> x with {IsConstraint = false})
-                .ToList();
-            foreignKeys.AddRange(toAdd);
-            foreignKeys.AddRange(toAdd2);
-        }
-
-        if (foreignKeys.Any(x => !tables.Contains(x.Table)))
-        {
-            throw new InvalidOperationException("There is a table with foreign key which is not included in filter");
-        }
-
-        foreach (var foreignKey in foreignKeys)
-        {
-            await executor.DropForeignKey(foreignKey);
-        }
-
-        foreach (var (table, indexes) in uniqueIndexes)
-        {
-            foreach (var index in indexes)
+        var foreignKeysReferencingConstraints = foreignKeysToModify
+            .Where(fk => uniqueConstraints.Any(x => x.Table == fk.Table && fk.Columns.SequenceEqual(x.Columns)))
+            .Select(fk => new
             {
-                await executor.AddSpaceIdToIndex(table, index, ownSpaceColumnName);
-            }
-        }
+                fk,
+                constraint = uniqueConstraints.First(x => x.Table == fk.Table && fk.Columns.SequenceEqual(x.Columns))
+            })
+            .ToList();
 
-        foreach (var foreignKey in foreignKeys)
+        var foreignKeysReferencingIndexes = foreignKeysToModify
+            .Where(fk =>
+                uniqueIndexesToModify.Any(x =>
+                    x.Table == fk.Table && fk.Columns.SequenceEqual(x.Columns.Select(y => y.Name))))
+            .Select(fk => new
+            {
+                fk,
+                constraint = uniqueIndexesToModify.First(x =>
+                    x.Table == fk.Table && fk.Columns.SequenceEqual(x.Columns.Select(y => y.Name)))
+            })
+            .ToList();
+
+        
+        foreach (var fk in foreignKeysReferencingConstraints)
         {
-            await executor.AddForeignKey(foreignKey);
+            await executor.DropForeignKey(fk.fk);
+        }
+        
+        foreach (var fk in foreignKeysReferencingIndexes)
+        {
+            await executor.DropForeignKey(fk.fk);
         }
 
+        foreach (var uniqueConstraint in uniqueConstraints)
+        {
+            await executor.ReplaceUniqueConstraint(uniqueConstraint, ownSpaceColumnName);
+        }
+        
+        foreach (var uniqueIndex in uniqueIndexesToModify)
+        {
+            await executor.ReplaceUniqueIndex(uniqueIndex, ownSpaceColumnName);
+        }
+        
+        foreach (var fk in foreignKeysReferencingConstraints)
+        {
+            await executor.RecreateForeignKey(fk.fk, ownSpaceColumnName);
+        }
+        
+        foreach (var fk in foreignKeysReferencingIndexes)
+        {
+            await executor.RecreateForeignKey(fk.fk, ownSpaceColumnName);
+        }
+        
         await executor.DropOwnSpacePolicy(policyName);
-
+        
         await executor.AddOwnSpacePolicyFunction(policyFunction, ownSpaceVariableName);
-
+        
         await executor.AddOwnSpacePolicy(policyName, policyFunction, tables, ownSpaceColumnName);
     }
+
     internal record UniqueIndex(string Name, bool HasConstraint, string? ConstraintName, Column[] Columns);
 
     internal record Column(string Name, bool IsDescending, bool IsIncluded);
