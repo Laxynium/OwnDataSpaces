@@ -10,7 +10,9 @@ internal class DatabaseOwnSpaceSetter
     private readonly SetOwnSpaceSqlProvider _sqlProvider;
     private readonly ILogger<DatabaseOwnSpaceSetter> _logger;
 
-    public DatabaseOwnSpaceSetter(OwnSpaceProvider provider, SetOwnSpaceSqlProvider sqlProvider,
+    public DatabaseOwnSpaceSetter(
+        OwnSpaceProvider provider,
+        SetOwnSpaceSqlProvider sqlProvider,
         ILogger<DatabaseOwnSpaceSetter> logger)
     {
         _provider = provider;

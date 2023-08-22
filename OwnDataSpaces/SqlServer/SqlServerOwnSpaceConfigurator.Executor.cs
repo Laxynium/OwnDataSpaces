@@ -27,11 +27,10 @@ public static partial class SqlServerOwnSpaceConfigurator
         public async Task<IReadOnlyCollection<Table>> GetTablesToModify(TableFilter filter)
         {
             const string sql = """
-                                   SELECT
-                                         TABLE_NAME as [Name]
-                                       , TABLE_SCHEMA as [Schema]
-                                   FROM INFORMATION_SCHEMA.TABLES
-                                   WHERE TABLE_TYPE = 'BASE TABLE';
+                                SELECT [name] AS [Name], SCHEMA_NAME(schema_id) AS [Schema]
+                                FROM sys.tables t
+                                WHERE 
+                                t.temporal_type <> 1;
                                """;
             var tables = await QueryAsync<Table>(sql);
             return tables.Where(x => filter(x)).ToList();

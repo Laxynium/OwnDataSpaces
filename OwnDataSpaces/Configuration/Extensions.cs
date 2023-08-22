@@ -22,6 +22,9 @@ public static class Extensions
         services.TryAddScoped<SetOwnSpaceInterceptor>(sp =>
             new SetOwnSpaceInterceptor(sp.GetRequiredService<DatabaseOwnSpaceSetter>()));
 
+        services.TryAddScoped<SetOwnSpaceSqlConnection>(sp =>
+            new SetOwnSpaceSqlConnection(sp.GetRequiredService<DatabaseOwnSpaceSetter>()));
+
         if (options.Type == "SqlServer")
         {
             services.TryAddScoped<SetOwnSpaceSqlProvider>(_ => SqlServerOwnSpaceConfigurator.SetOwnSpaceSql);
