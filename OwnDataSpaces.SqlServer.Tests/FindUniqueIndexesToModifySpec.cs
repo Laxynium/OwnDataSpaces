@@ -24,7 +24,7 @@ public class FindUniqueIndexesToModifySpec
 
         result.Should().HaveCount(1);
         var constraint = result.ElementAt(0);
-        constraint.Should().BeEquivalentTo(new SqlServerOwnSpaceConfigurator.UniqueIndex2(
+        constraint.Should().BeEquivalentTo(new SqlServerOwnSpaceConfigurator.UniqueIndex(
             new Table("Table1", "dbo"),
             "IX_Col1",
             new[] { new SqlServerOwnSpaceConfigurator.Column("Col1", false, false) }));
@@ -50,7 +50,7 @@ public class FindUniqueIndexesToModifySpec
 
         result.Should().HaveCount(1);
         var constraint = result.ElementAt(0);
-        constraint.Should().BeEquivalentTo(new SqlServerOwnSpaceConfigurator.UniqueIndex2(
+        constraint.Should().BeEquivalentTo(new SqlServerOwnSpaceConfigurator.UniqueIndex(
             new Table("Table1", "dbo"),
             "IX_Col1",
             new[]
@@ -82,7 +82,7 @@ public class FindUniqueIndexesToModifySpec
 
         result.Should().HaveCount(1);
         var constraint = result.ElementAt(0);
-        constraint.Should().BeEquivalentTo(new SqlServerOwnSpaceConfigurator.UniqueIndex2(
+        constraint.Should().BeEquivalentTo(new SqlServerOwnSpaceConfigurator.UniqueIndex(
             new Table("Table1", "dbo"),
             "IX_Col3",
             new[]
@@ -124,7 +124,7 @@ public class FindUniqueIndexesToModifySpec
 
         result.Should().HaveCount(1);
         var constraint = result.ElementAt(0);
-        constraint.Should().BeEquivalentTo(new SqlServerOwnSpaceConfigurator.UniqueIndex2(
+        constraint.Should().BeEquivalentTo(new SqlServerOwnSpaceConfigurator.UniqueIndex(
             new Table("Table1", "SchemaB"),
             "IX_Col3",
             new[]
@@ -134,7 +134,7 @@ public class FindUniqueIndexesToModifySpec
     }
 
 
-    private static async Task<IReadOnlyCollection<SqlServerOwnSpaceConfigurator.UniqueIndex2>>
+    private static async Task<IReadOnlyCollection<SqlServerOwnSpaceConfigurator.UniqueIndex>>
         FindUniqueIndexesToModify(
             Database db, TableFilter filter)
     {

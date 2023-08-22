@@ -102,8 +102,4 @@ public static partial class SqlServerOwnSpaceConfigurator
         
         await executor.AddOwnSpacePolicy(policyName, policyFunction, tables, ownSpaceColumnName);
     }
-
-    internal record UniqueIndex(string Name, bool HasConstraint, string? ConstraintName, Column[] Columns);
-
-    internal record Column(string Name, bool IsDescending, bool IsIncluded);
 }
