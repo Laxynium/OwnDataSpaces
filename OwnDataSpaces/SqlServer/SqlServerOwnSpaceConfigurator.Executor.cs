@@ -166,22 +166,27 @@ public static partial class SqlServerOwnSpaceConfigurator
                 .ToList();
         }
 
-        public async Task ReplaceUniqueConstraint(UniqueConstraint uniqueConstraint, string ownSpaceColumnName)
+        public async Task ReplaceUniqueConstraint(UniqueConstraint uniqueConstraint, string columnName)
         {
             var table = uniqueConstraint.Table;
+            var columns = uniqueConstraint.Columns
+                .Where(x => x != columnName)
+                .Append(columnName);
             var sql = $"""
                          ALTER TABLE [{table.Schema}].[{table.Name}]
                          DROP CONSTRAINT [{uniqueConstraint.Name}];
                          ALTER TABLE [{table.Schema}].[{table.Name}]
                          ADD CONSTRAINT [{uniqueConstraint.Name}] UNIQUE
-                             ({string.Join(", ", uniqueConstraint.Columns.Append(ownSpaceColumnName))})
+                             ({columns.Format(", ", c => $"[{c}]")})
                        """;
             await ExecuteAsync(sql);
         }
 
-        public async Task ReplaceUniqueIndex(UniqueIndex uniqueIndex, string ownSpaceColumnName)
+        public async Task ReplaceUniqueIndex(UniqueIndex uniqueIndex, string columnName)
         {
-            var columns = uniqueIndex.Columns.Append(new Column(ownSpaceColumnName, false, false));
+            var columns = uniqueIndex.Columns
+                .Where(c => c.Name != columnName)
+                .Append(new Column(columnName, false, false));
             var sql = $"""
                          DROP INDEX [{uniqueIndex.Name}] ON [{uniqueIndex.Table.Schema}].[{uniqueIndex.Table.Name}];
                          CREATE UNIQUE INDEX [{uniqueIndex.Name}]
@@ -204,11 +209,17 @@ public static partial class SqlServerOwnSpaceConfigurator
 
         public async Task RecreateForeignKey(ForeignKey fk, string columnName)
         {
+            var referencingColumns = fk.ReferencingColumns
+                .Where(c => c != columnName)
+                .Append(columnName);
+            var columns = fk.Columns
+                .Where(c => c != columnName)
+                .Append(columnName);
             var sql = $"""
                        ALTER TABLE [{fk.ReferencingTable.Schema}].[{fk.ReferencingTable.Name}]
                        ADD CONSTRAINT [{fk.Name}]
-                           FOREIGN KEY ({fk.ReferencingColumns.Append(columnName).Format(",", c => $"[{c}]")})
-                           REFERENCES [{fk.Table.Schema}].[{fk.Table.Name}]({fk.Columns.Append(columnName).Format(",", c => $"[{c}]")})
+                           FOREIGN KEY ({referencingColumns.Format(",", c => $"[{c}]")})
+                           REFERENCES [{fk.Table.Schema}].[{fk.Table.Name}]({columns.Format(",", c => $"[{c}]")})
                        """;
             await ExecuteAsync(sql);
         }
@@ -289,6 +300,6 @@ public static partial class SqlServerOwnSpaceConfigurator
     internal record UniqueConstraint(Table Table, string Name, string[] Columns);
 
     internal record UniqueIndex(Table Table, string Name, Column[] Columns);
-    
+
     internal record Column(string Name, bool IsDescending, bool IsIncluded);
 }
