@@ -296,6 +296,36 @@ public class ApplyOwnSpaceOnTablesWithIndexesSpec
     }
 
 
+    [Fact]
+    public async Task Where_there_is_foreign_key_referencing_a_column_with_constraint_and_index()
+    {
+        var db = await Database.CreateDatabase(
+            $"{nameof(ApplyOwnSpaceOnTablesWithIndexesSpec)}{nameof(Where_there_is_foreign_key_referencing_a_column_with_constraint_and_index)}");
+
+        await db.Execute($"""
+                          CREATE TABLE [Table1](
+                              Id INT IDENTITY(1,1) PRIMARY KEY,
+                              Col1 NVARCHAR(100) NOT NULL
+                              CONSTRAINT AK_Col1 UNIQUE(Col1)
+                          );
+                          CREATE UNIQUE INDEX IX_Col1_X ON [Table1](Col1);
+                          """);
+
+        await db.Execute($"""
+                          CREATE TABLE [Table2](
+                              Id INT IDENTITY(1,1) PRIMARY KEY,
+                              Table1Col1 NVARCHAR(100) NOT NULL,
+                              CONSTRAINT FK_Table2_Table1_Table1Col1 FOREIGN KEY (Table1Col1) REFERENCES [Table1](Col1),
+                          );
+                          """);
+
+        await SqlServerOwnSpaceConfigurator.Apply(db.ConnectionString, _ => true);
+
+        await db.EnsureOwnSpacesAreNotLeaking(
+            "INSERT INTO [Table1] (Col1) VALUES('Text123')",
+            "SELECT COUNT(1) FROM [Table1]", 1);
+    }
+    
     [Fact(Skip = "Looks like there cannot be a foreign key to filtered unique index, " +
                  "keeping this test as a documentation of this fact")]
     public async Task When_there_is_foreign_key_to_filtered_unique_index()

@@ -65,41 +65,36 @@ public static partial class SqlServerOwnSpaceConfigurator
             })
             .ToList();
 
-        
-        foreach (var fk in foreignKeysReferencingConstraints)
+
+        var foreignKeysToRecreate = foreignKeysReferencingConstraints.Select(x => x.fk)
+            .Concat(foreignKeysReferencingIndexes.Select(x => x.fk))
+            .DistinctBy(x => new { x.ReferencingTable, x.Name })
+            .ToList();
+
+        foreach (var fk in foreignKeysToRecreate)
         {
-            await executor.DropForeignKey(fk.fk);
-        }
-        
-        foreach (var fk in foreignKeysReferencingIndexes)
-        {
-            await executor.DropForeignKey(fk.fk);
+            await executor.DropForeignKey(fk);
         }
 
         foreach (var uniqueConstraint in uniqueConstraints)
         {
             await executor.ReplaceUniqueConstraint(uniqueConstraint, ownSpaceColumnName);
         }
-        
+
         foreach (var uniqueIndex in uniqueIndexesToModify)
         {
             await executor.ReplaceUniqueIndex(uniqueIndex, ownSpaceColumnName);
         }
-        
-        foreach (var fk in foreignKeysReferencingConstraints)
+
+        foreach (var fk in foreignKeysToRecreate)
         {
-            await executor.RecreateForeignKey(fk.fk, ownSpaceColumnName);
+            await executor.RecreateForeignKey(fk, ownSpaceColumnName);
         }
-        
-        foreach (var fk in foreignKeysReferencingIndexes)
-        {
-            await executor.RecreateForeignKey(fk.fk, ownSpaceColumnName);
-        }
-        
+
         await executor.DropOwnSpacePolicy(policyName);
-        
+
         await executor.AddOwnSpacePolicyFunction(policyFunction, ownSpaceVariableName);
-        
+
         await executor.AddOwnSpacePolicy(policyName, policyFunction, tables, ownSpaceColumnName);
     }
 }
