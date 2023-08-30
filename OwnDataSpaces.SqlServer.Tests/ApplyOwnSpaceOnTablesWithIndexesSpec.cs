@@ -1,4 +1,7 @@
-﻿using OwnDataSpaces.SqlServer.Tests.Fixtures;
+﻿using Dapper;
+using FluentAssertions;
+using Microsoft.Data.SqlClient;
+using OwnDataSpaces.SqlServer.Tests.Fixtures;
 using Xunit.Abstractions;
 
 namespace OwnDataSpaces.SqlServer.Tests;
@@ -54,6 +57,46 @@ public class ApplyOwnSpaceOnTablesWithIndexesSpec
             "INSERT INTO [Table1] (AltId, Col1) VALUES(NEWID(), 'Text123')",
             "SELECT COUNT(1) FROM [Table1]", 1);
     }
+
+    [Fact]
+    public async Task When_there_is_unique_index_with_filter()
+    {
+        var db = await Database.CreateDatabase(
+            $"{nameof(ApplyOwnSpaceOnTablesWithIndexesSpec)}{nameof(When_there_is_unique_index_with_filter)}");
+
+        await db.Execute($"""
+                          CREATE TABLE [Table1](
+                              Id INT IDENTITY(1,1) PRIMARY KEY,
+                              Col1 NVARCHAR(100) NOT NULL,
+                              Col2 NVARCHAR(100) NOT NULL,
+                              IsDeleted BIT NOT NULL
+                          );
+                          CREATE UNIQUE INDEX IX_Col1
+                              ON [Table1](Col1)
+                              WHERE IsDeleted = 0
+                          """);
+
+        await SqlServerOwnSpaceConfigurator.Apply(db.ConnectionString, _ => true);
+
+        await db.EnsureOwnSpacesAreNotLeaking(
+            "INSERT INTO [Table1] (Col1, Col2, IsDeleted) VALUES('Text123', 'R1', 0)",
+            "SELECT COUNT(1) FROM [Table1]", 1);
+
+
+        var ownSpace = db.GetOwnSpace();
+        await db.Run(ownSpace,
+            c => c.ExecuteAsync("INSERT INTO [Table1] (Col1, Col2, IsDeleted) VALUES('Text123', 'R2', 0)"));
+        var insertDuplicate = () => db.Run(ownSpace,
+            c => c.ExecuteAsync("INSERT INTO [Table1] (Col1, Col2, IsDeleted) VALUES('Text123', 'R3', 0)"));
+        await insertDuplicate.Should().ThrowAsync<SqlException>();
+
+        await db.Run(ownSpace,
+            c => c.ExecuteAsync("INSERT INTO [Table1] (Col1, Col2, IsDeleted) VALUES('Text2', 'R4', 1)"));
+        var insertNotADuplicate = () => db.Run(ownSpace,
+            c => c.ExecuteAsync("INSERT INTO [Table1] (Col1, Col2, IsDeleted) VALUES('Text2', 'R5', 0)"));
+        await insertNotADuplicate.Should().NotThrowAsync();
+    }
+
 
     [Fact]
     public async Task When_there_is_unique_constraint()
@@ -134,7 +177,7 @@ public class ApplyOwnSpaceOnTablesWithIndexesSpec
                               AltId UNIQUEIDENTIFIER NOT NULL,
                               Col1 NVARCHAR(100) NOT NULL
                           );
-                          CREATE UNIQUE INDEX IX_AltId_Col1 ON [Table1](AltId, Col1); 
+                          CREATE UNIQUE INDEX IX_AltId_Col1 ON [Table1](AltId, Col1);
                           """);
 
         await SqlServerOwnSpaceConfigurator.Apply(db.ConnectionString, _ => true);
@@ -325,7 +368,7 @@ public class ApplyOwnSpaceOnTablesWithIndexesSpec
             "INSERT INTO [Table1] (Col1) VALUES('Text123')",
             "SELECT COUNT(1) FROM [Table1]", 1);
     }
-    
+
     [Fact]
     public async Task Applying_twice_a_own_space()
     {
@@ -350,14 +393,14 @@ public class ApplyOwnSpaceOnTablesWithIndexesSpec
                           """);
 
         await SqlServerOwnSpaceConfigurator.Apply(db.ConnectionString, _ => true);
-        
+
         await SqlServerOwnSpaceConfigurator.Apply(db.ConnectionString, _ => true);
 
         await db.EnsureOwnSpacesAreNotLeaking(
             "INSERT INTO [Table1] (Col1) VALUES('Text123')",
             "SELECT COUNT(1) FROM [Table1]", 1);
     }
-    
+
     [Fact(Skip = "Looks like there cannot be a foreign key to filtered unique index, " +
                  "keeping this test as a documentation of this fact")]
     public async Task When_there_is_foreign_key_to_filtered_unique_index()

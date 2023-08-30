@@ -130,7 +130,8 @@ public static partial class SqlServerOwnSpaceConfigurator
                                     OBJECT_NAME(i.object_id) AS TableName,
                                     COL_NAME(ic.object_id, ic.column_id) AS [Column],
                                     ic.is_descending_key AS IsDecending,
-                                    ic.is_included_column AS IsIncluded
+                                    ic.is_included_column AS IsIncluded,
+                                    i.filter_definition AS FilterDefinition
                                 FROM sys.indexes i
                                 INNER JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
                                 LEFT JOIN sys.key_constraints kc ON i.index_id = kc.unique_index_id AND i.object_id = kc.parent_object_id
@@ -147,7 +148,8 @@ public static partial class SqlServerOwnSpaceConfigurator
                 TableName = default(string)!,
                 Column = default(string)!,
                 IsDecending = default(bool),
-                IsIncluded = default(bool)
+                IsIncluded = default(bool),
+                FilterDefinition = default(string)
             });
 
             var result = sqlResult.GroupBy(x => new { x.TableSchema, x.TableName })
@@ -158,7 +160,8 @@ public static partial class SqlServerOwnSpaceConfigurator
                             constrains.Key,
                             constrains
                                 .Select(x => new Column(x.Column, x.IsDecending, x.IsIncluded))
-                                .ToArray())))
+                                .ToArray(),
+                            constrains.FirstOrDefault()?.FilterDefinition ?? null)))
                 .ToList();
 
             return result
@@ -194,6 +197,7 @@ public static partial class SqlServerOwnSpaceConfigurator
                                  $"""
                                   [{c.Name}] {(c.IsDescending ? "DESC" : "ASC")}
                                   """)})
+                             {(uniqueIndex.FilterDefinition is not null ? $"WHERE {uniqueIndex.FilterDefinition}" : "")}
                        """;
             await ExecuteAsync(sql);
         }
@@ -226,7 +230,7 @@ public static partial class SqlServerOwnSpaceConfigurator
 
         public async Task AddOwnSpaceColumn(Table table, string columnName)
         {
-            var sql = $"""            
+            var sql = $"""
                            IF NOT EXISTS(SELECT 1
                                FROM   sys.columns
                                WHERE  object_id = OBJECT_ID(N'[{table.Schema}].[{table.Name}]')
@@ -246,7 +250,7 @@ public static partial class SqlServerOwnSpaceConfigurator
                            
                            ALTER TABLE [{table.Schema}].[{table.Name}]
                            ADD CONSTRAINT df_{columnName}_{table.Name}
-                           DEFAULT CAST(SESSION_CONTEXT(N'{contextVariableName}') AS uniqueidentifier) FOR [{columnName}];           
+                           DEFAULT CAST(SESSION_CONTEXT(N'{contextVariableName}') AS uniqueidentifier) FOR [{columnName}];
                        """;
             await ExecuteAsync(sql);
         }
@@ -273,9 +277,9 @@ public static partial class SqlServerOwnSpaceConfigurator
             IEnumerable<Table> tables,
             string columnName)
         {
-            var sql = $"""                            
+            var sql = $"""
                            CREATE SECURITY POLICY {policyName}
-                           {tables.Format(",", t => $"""                
+                           {tables.Format(",", t => $"""
                                                        ADD FILTER PREDICATE {policyFunction}([{columnName}]) ON [{t.Schema}].[{t.Name}]
                                                      , ADD BLOCK PREDICATE {policyFunction}([{columnName}]) ON [{t.Schema}].[{t.Name}] AFTER INSERT
                                                      """
@@ -299,7 +303,7 @@ public static partial class SqlServerOwnSpaceConfigurator
 
     internal record UniqueConstraint(Table Table, string Name, string[] Columns);
 
-    internal record UniqueIndex(Table Table, string Name, Column[] Columns);
+    internal record UniqueIndex(Table Table, string Name, Column[] Columns, string? FilterDefinition = null);
 
     internal record Column(string Name, bool IsDescending, bool IsIncluded);
 }

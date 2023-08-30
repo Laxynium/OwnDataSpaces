@@ -1,4 +1,5 @@
-﻿using System.Data.Common;
+﻿using System.Data;
+using System.Data.Common;
 using Dapper;
 using FluentAssertions;
 using Microsoft.Data.SqlClient;
@@ -32,7 +33,7 @@ public class Database
         {
             await masterConnection.ExecuteAsync($"""
                                                  DROP DATABASE IF EXISTS [{dbName}];
-                                                 CREATE DATABASE [{dbName}];                                                          
+                                                 CREATE DATABASE [{dbName}];
                                                  """);
         }
 
@@ -47,6 +48,18 @@ public class Database
     {
         await using var connection = new SqlConnection(ConnectionString);
         await connection.ExecuteAsync(sql);
+    }
+
+    public OwnSpace GetOwnSpace() => new(() => new HttpClient(), () => _serviceProvider);
+
+    public async Task Run(OwnSpace ownSpace, Func<IDbConnection, Task> action)
+    {
+        await using var scope = ownSpace.GetAsyncScope();
+        await using var connection = new SqlConnection(ConnectionString);
+        await connection.OpenAsync();
+        var setOwnSpace = scope.ServiceProvider.GetRequiredService<SetOwnSpaceSqlConnection>();
+        await setOwnSpace.SetOwnSpace(connection, default);
+        await action(connection);
     }
 
     public async Task EnsureOwnSpacesAreNotLeaking(string writeSql, string readSql, int expectedCount)
