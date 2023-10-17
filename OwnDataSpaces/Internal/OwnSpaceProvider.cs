@@ -13,7 +13,7 @@ internal class OwnSpaceProvider
     }
 
 
-    public void SetSpaceId(Guid spaceId)
+    internal void SetSpaceId(Guid spaceId)
     {
         _spaceId = spaceId;
     }

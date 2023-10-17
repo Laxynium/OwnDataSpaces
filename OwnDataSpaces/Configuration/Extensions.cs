@@ -1,7 +1,9 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OwnDataSpaces.EFCore;
 using OwnDataSpaces.Internal;
+using OwnDataSpaces.Logging;
 using OwnDataSpaces.Postgres;
 using OwnDataSpaces.SqlServer;
 
@@ -35,6 +37,9 @@ public static class Extensions
             services.TryAddScoped<SetOwnSpaceSqlProvider>(_ => PostgresOwnSpaceConfigurator.SetOwnSpaceSql);
         }
 
+        services.AddTransient<SetupOwnSpaceLoggingContextMiddleware>();
+        services.AddTransient<IStartupFilter, SetupOwnSpaceLoggingContextMiddlewareStartupFilter>();
+        
         return services;
     }
 }

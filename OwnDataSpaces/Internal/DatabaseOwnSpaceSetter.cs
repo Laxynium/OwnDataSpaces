@@ -24,8 +24,6 @@ internal class DatabaseOwnSpaceSetter
     {
         var spaceId = _provider.GetSpaceId();
 
-        _logger.LogInformation("Setting OwnSpace to '{SpaceId}'", spaceId);
-
         var sql = _sqlProvider(spaceId);
 
         await using var cmd = connection.CreateCommand();
@@ -38,8 +36,6 @@ internal class DatabaseOwnSpaceSetter
     {
         var spaceId = _provider.GetSpaceId();
 
-        _logger.LogInformation("Setting OwnSpace to '{SpaceId}'", spaceId);
-        
         var sql = _sqlProvider(spaceId);
 
         using var cmd = connection.CreateCommand();
